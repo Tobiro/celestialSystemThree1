@@ -59,6 +59,17 @@ function speedToScreen(num){
 // const testa = new THREE.BufferGeometry();
 // testa.setAttribute('position', new THREE.BufferAttribute(aa1,3));
 // const test1a = new THREE.Mesh(testa, matt);
+// let vv = new Float32Array([3.5,3.5,0]);
+// let test = new THREE.BufferGeometry();
+// test.setAttribute('position', new THREE.BufferAttribute(vv,3));
+// const matt =  new THREE.MeshPhongMaterial({color:0x000fff, size:10});
+// matt.side = THREE.DoubleSide;
+// const points = new THREE.Points(test,matt);
+ const vv = [new THREE.Vector3(3,3,3), new THREE.Vector3(4,4,4)];
+ let spl = new THREE.BufferGeometry().setFromPoints(vv);
+ const line = new THREE.Line( spl, new THREE.LineDashedMaterial( { color: 0x000fff, dashSize: 3, gapSize: 0.2, linewidth:30 } ) );
+ //line.computeLineDistances();
+
 
 
 //INVOKE THE Rocket and planet Classes//
@@ -82,10 +93,10 @@ class Rocket {
             this.rocket = new THREE.Mesh(this.rocketG, this.rokcetM);
             this.rocket.position.copy(new THREE.Vector3(X,Y,0));
     }
-    movePos(dd){
-        this.rocket.position.add(dd.multiplyScalar(delT));
+    movePos(dd, dt){
+        this.rocket.position.add(dd.multiplyScalar(dt));
     }
-    moveVel(dv){
+    moveVel(dv,dt){
         this.V.add(dv.multiplyScalar(delT));
     }
     forceOnRocket(body){
@@ -96,6 +107,14 @@ class Rocket {
         let acc = rnorm.multiplyScalar(G*Math.pow(speedToScreen(1),3)*body.mass/r.distanceToSquared(new THREE.Vector3()) )
         return acc;
     };
+    _trajForce(body,pos){
+        let r = new THREE.Vector3();
+        r.subVectors(body.planet.position,pos )
+        let rnorm = r.clone().normalize()
+        //let acc = rnorm.multiplyScalar(1.993* Math.pow(10,(-38))*body.mass/r.distanceToSquared(new THREE.Vector3()) )
+        let acc = rnorm.multiplyScalar(G*Math.pow(speedToScreen(1),3)*body.mass/r.distanceToSquared(new THREE.Vector3()) )
+        return acc;
+    }
     thrusters(left,right,up,down){
         let acc1 = new THREE.Vector3();
         let acc2 = new THREE.Vector3();
@@ -123,9 +142,29 @@ class Rocket {
         acc1.add(acc5);
         return acc1;
     };
+    trajectory(dt){
+        let trajPtsCnt = 300;
+        let trajPtsPos = [this.rocket.position.clone()];
+        let trajPtsV = [this.V.clone()];
+        for(let i=0; i<trajPtsCnt;i++){
+            let trajPtsPosTemp = trajPtsPos[i].clone();
+            let trajPtsVTemp = trajPtsV[i].clone();
+            for(let j=0;j<1000;j++){
+                let acc = this._trajForce(p1,trajPtsPosTemp);
+                trajPtsVTemp.add(acc.multiplyScalar(dt*20));
+                trajPtsPosTemp.add(trajPtsVTemp.clone().multiplyScalar(dt*20));
+            }
+            trajPtsV.push(trajPtsVTemp)
+            trajPtsPos.push(trajPtsPosTemp)
+        }
+        let trajG = new THREE.BufferGeometry().setFromPoints(trajPtsPos);
+        let trajM = new THREE.LineDashedMaterial( { color: 0x000fff, dashSize: 0.5, gapSize: 2 } )
+        let traj = new THREE.Line(trajG, trajM) ;
+        return traj;
+    }
 
 }
-console.log(G*Math.pow(speedToScreen(1),2))
+//console.log(G*Math.pow(speedToScreen(1),2))
 
 class Planet {
     constructor(X,Y, Vx, Vy, radius, segments, stasis, mass){
@@ -139,20 +178,20 @@ class Planet {
         this.planet = new THREE.Mesh(this.planetG, this.planetM);
         this.planet.position.copy(new THREE.Vector3(X,Y,0))
     }
-    movePos(dd){
-        this.planet.position.add(dd.multiplyScalar(delT));
+    movePos(dd,dt){
+        this.planet.position.add(dd.multiplyScalar(dt));
     }
-    moveVel(dv){
-        this.V.add(dv.multiplyScalar(delT));
+    moveVel(dv, dt){
+        this.V.add(dv.multiplyScalar(dt));
     }
 }
 
 
-const r1 = new Rocket(-distToScreen(AU),0,0.0000,speedToScreen(0.0000977  *c) ,1,1.5,1,1 );
+const r1 = new Rocket(-distToScreen(AU),0,0.0000,speedToScreen(/*0.0002113*/ 0.000105   *c) ,1,1.5,1,1 );
 //const r1 = new Rocket(0,0,0.0000,Math.sqrt(9*Math.pow(10,30 ) *1.993* Math.pow(10,(-38))/30 ) ,1,1.5,1,1 );
 const p1 = new Planet(0,0,0,0,2, 50, 1,9*Math.pow(10,30));
 
-console.log(r1.forceOnRocket(p1).x * AU/100);
+//console.log(r1.forceOnRocket(p1).x * AU/100);
 
 
 const scene = new THREE.Scene();
@@ -174,36 +213,96 @@ scene.add(p1.planet);
 scene.add(lght);
 scene.add(dl);
 scene.add(helper);
+scene.add(line);
+//scene.add(r1.trajectory(delT))
 camera.position.z = 100;
-
+//console.log(r1.trajectory(delT*100))
+var traj_to_ren_rem;
+var trajCnt = 0;
+var toggler = 0;
+var modul = 5;
+// var modulusCntr = 0;
 function animate(now) {
     //EVERY RENDER = 1 sec in the simulated world. This is the current setup of the physics engine.
     stats.begin();
-    //console.log(now)
-    //console.log(acc1);
 	requestAnimationFrame( animate );
 	renderer.render( scene, camera );
 	controls.update();
-   // console.log(r1.V)
-    for(let i = 0;i<10000; i++){
+   let cntr = 9000
+
+    for(let i = 0;i<cntr; i++){
         let acc1 = r1.forceOnRocket(p1);
         let acc2 = r1.thrusters(left,right,up,down);
-        //console.log(acc2);
-        r1.moveVel(acc1);
-        r1.moveVel(acc2.multiplyScalar(0.005));
+        r1.moveVel(acc1, delT);
+        r1.moveVel(acc2.multiplyScalar(delT*10));
         // if(right === 1){
         //     let acc2 = r1.thrusters(0,1,0,0);
         //     r1.moveVel(acc2);
         // }
-        r1.movePos(r1.V);
+        r1.movePos(r1.V, delT);
         dl.position.x = r1.rocket.position.x
-        //console.log(acc1)
+        // if(acc2.length()>0){
+        //     if(trajCnt === 0){
+        //         traj_to_ren_rem = r1.trajectory(delT);
+        //         scene.add(traj_to_ren_rem);
+        //         trajCnt++
+        //     };
+        //     break;
+        // }
+        // else {
+        //     if(trajCnt >0){
+        //         scene.remove(traj_to_ren_rem);
+        //         trajCnt = 0
+        //     }
+        // }
+        if(acc2.length()>0){
+            if(trajCnt === 0){
+                trajCnt++
+                scene.remove(traj_to_ren_rem);
+            }
+            else if(trajCnt>0){
+                if(trajCnt%modul === 0){
+                    scene.remove(traj_to_ren_rem);   
+                    toggler =0 
+                    //console.log(trajCnt)
+                } else {
+                    if(toggler === 0){
+                        traj_to_ren_rem = r1.trajectory(delT);
+                        scene.add(traj_to_ren_rem);
+                        toggler = 1    
+                        //console.log(trajCnt)                    
+                    }
+                    }
+                trajCnt++;
+                
+                // traj_to_ren_rem = r1.trajectory(delT);
+                // scene.add(traj_to_ren_rem);
+
+                 //scene.remove(traj_to_ren_rem);   
+            }
+            break;
+        }
+        else {
+            //scene.remove(traj_to_ren_rem)
+            //trajCnt++
+            //console.log(trajCnt)
+            if(trajCnt >0){
+                scene.remove(traj_to_ren_rem);
+                traj_to_ren_rem = r1.trajectory(delT);
+                scene.add(traj_to_ren_rem);
+                console.log('this')
+                trajCnt = 0
+            }
+            //scene.remove(traj_to_ren_rem)
+        }
     }
-    let xxx = r1.thrusters(left,right,up,down)
+    //scene.remove(r1.rocke)
+    //let xxx = r1.thrusters(left,right,up,down)
     //console.log(r1.thrusters(left, right, up,down))
     //console.log(r1.V)
     //console.log(acc)
-    console.log(left,right,up,down);
+    //console.log(left,right,up,down);
+    //console.log(r1.V.y * AU/100)
     //console.log(acc1);
    stats.end();
 }
