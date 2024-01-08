@@ -21,7 +21,7 @@ var stretch = 100;
 const g = 9.8;
 const c = 299792458;
 const G = 6.6743 * Math.pow(10,-11);
-var delT = 2;
+var delT = 4;
 const AU = 1.495978707* Math.pow(10,11);
 var distanceToScreenMult = stretch/AU;  
 
@@ -33,41 +33,6 @@ function distToScreen(num){
 function speedToScreen(num){
     return distToScreen(num)
 }
-// Testing space
-// const aa =  new THREE.Vector2(1,2);
-// console.log(aa);
-// aa.set(4,5);
-// console.log(aa);
-// let aa = new Float32Array(
-//     [
-//         -10,-2,0,
-//         -10,2,0,
-//         3,0,0
-//     ]
-// )
-// const test = new THREE.BufferGeometry();
-// test.setAttribute('position', new THREE.BufferAttribute(aa,3));
-// const matt = new THREE.MeshPhongMaterial({color:0x000fff});
-// matt.side = THREE.DoubleSide;
-// const test1 = new THREE.Mesh(test, matt);
-// test1.position.add(new THREE.Vector3(-3,0,0))
-
-// let aa1 = new Float32Array(
-//     [
-//         -20,-1,0,
-//         -20,1,0,
-//         3,0,0
-//     ]
-// )
-// const testa = new THREE.BufferGeometry();
-// testa.setAttribute('position', new THREE.BufferAttribute(aa1,3));
-// const test1a = new THREE.Mesh(testa, matt);
-// let vv = new Float32Array([3.5,3.5,0]);
-// let test = new THREE.BufferGeometry();
-// test.setAttribute('position', new THREE.BufferAttribute(vv,3));
-// const matt =  new THREE.MeshPhongMaterial({color:0x000fff, size:10});
-// matt.side = THREE.DoubleSide;
-// const points = new THREE.Points(test,matt);
  const vv = [new THREE.Vector3(3,3,3), new THREE.Vector3(4,4,4)];
  let spl = new THREE.BufferGeometry().setFromPoints(vv);
  const line = new THREE.Line( spl, new THREE.LineDashedMaterial( { color: 0x000fff, dashSize: 3, gapSize: 0.2, linewidth:30 } ) );
@@ -180,8 +145,35 @@ class Rocket {
         let traj = new THREE.Line(trajG, trajM) ;
         return traj;
     }
+    // trajectory1(bodies,dt){
+    //     let trajPtsCnt = 300;
+    //     let trajPtsPos = [this.body.position.clone()];
+    //     let trajPtsV = [this.V.clone()];
+    //     let trajBodiesPtsPos = Array.from({length:bodies.length}, (x,i)=> [bodies[i].body.position.clone()]);
+    //     let trajBodiesPtsV = Array.from({length:bodies.length}, (x,i)=> [bodies[i].V.clone()]);
+    //     let masses = Array.from({length:bodies.size}, (x,i)=> bodies[i].mass)
+    //     for(let i=0; i<trajPtsCnt;i++){ 
+    //         let trajPtsPosTemp = trajPtsPos[i].clone();
+    //         let trajPtsVTemp = trajPtsV[i].clone();
+    //         for(let j=0;j<1000;j++){
+    //             //let acc = this._trajForceNew(pBodies,trajPtsPosTemp);
+    //             CHECKMARK
+    //             let acc = this._trajForceNew1(masses, traj)
+    //             trajPtsVTemp.add(acc.multiplyScalar(dt*20));
+    //             trajPtsPosTemp.add(trajPtsVTemp.clone().multiplyScalar(dt*20));
+    //         }
+    //         trajPtsV.push(trajPtsVTemp)
+    //         trajPtsPos.push(trajPtsPosTemp)
+    //     }
+    //     let trajG = new THREE.BufferGeometry().setFromPoints(trajPtsPos);
+    //     let trajM = new THREE.LineDashedMaterial( { color: 0x000fff, dashSize: 3, gapSize: 300 } )
+    //     let traj = new THREE.Line(trajG, trajM) ;
+    //     return traj;
+    // }
 
 }
+
+
 //console.log(G*Math.pow(speedToScreen(1),2))
 
 class Planet {
@@ -221,10 +213,7 @@ function forceCalc(body2, r){
     
 };
 
-//let aa = matrix([[1,2], [3,4]])
-//sum(aa)
-//console.log(sum(aa,0).get([1]))
-//console.log(aa.size()[1])
+
 
 
 function matVecAdd(mat){
@@ -247,27 +236,116 @@ function phyEng(bodies){
         for(let j in bodies){
             matPos.set([parseInt(i),parseInt(j)], bodies[j].body.position.clone().sub(bodies[i].body.position))
             matAcc.set([parseInt(i),parseInt(j)], forceCalc(bodies[j], matPos.get([parseInt(i),parseInt(j)])))
-
-            //console.log(matAcc.get([parseInt(i),parseInt(j)]))
-            //console.log(i,j)
         }
     }
     return matVecAdd(matAcc);
-    //return sum(matAcc,1)
-    // let aa = sum(matAcc,1)
-    // console.log(aa.get([0]))
 }
 
 
 
+function intervalTrajectory(dt){
+    //console.log('this')
+    //return
+    if(trajSet.length != 0){
+        trajSet.forEach((x,i)=>scene.remove(x));
+    }
+    //console.log(posArr)
+    if(posjson.length ===0){return};
+    if(vjson.length ===0){return};
+    // let aa =   Array.from({length:posjson.length}, (x,i)=> [new THREE.Vector3(posjson[i].x,posjson[i].y, posjson[i].z )])
+    // console.log( aa)
+    // console.log(posArr[0])
+    let trajPtsCnt = 3;
+    let trajBodiesPtsPos = Array.from({length:posjson.length}, (x,i)=> [new THREE.Vector3(posjson[i].x,posjson[i].y, posjson[i].z )]);
+    let trajBodiesPtsV = Array.from({length:vjson.length}, (x,i)=> [new THREE.Vector3(vjson[i].x,vjson[i].y, vjson[i].z )]);
+    //let masses = Array.from({length:bodies.length}, (x,i)=> bodies[i].mass)
+    //console.log(trajBodiesPtsPos[0])
+    //console.log(posArr)
+    for(let i=0;i<trajPtsCnt;i++){
+        //console.log(trajBodiesPtsPos[0][i])
+        let trajBodiesPtsPosTemp = Array.from({length:posArr.length}, (x,p)=> trajBodiesPtsPos[p][i].clone() )
+        let trajBodiesPtsVTemp = Array.from({length:VArr.length}, (x,p)=> trajBodiesPtsV[p][i].clone() )
+        for(let j=0;j<1000;j++){
+            let acc =  trajForceEng(masses,trajBodiesPtsPosTemp);
+            // console.log(acc);
+            trajBodiesPtsVTemp.forEach((x,k)=> x.add(acc[k].clone().multiplyScalar(dt*10)))
+            trajBodiesPtsPosTemp.forEach((x,k)=> x.add(trajBodiesPtsVTemp[k].clone().multiplyScalar(dt*10)) )
+        }
+        trajBodiesPtsV.forEach((x,i)=> x.push(trajBodiesPtsVTemp[i]))
+        trajBodiesPtsPos.forEach((x,i)=> x.push(trajBodiesPtsPosTemp[i]) )
+    }
+    let trajSetG = Array.from({length:posArr.length},(x,i)=> new THREE.BufferGeometry().setFromPoints(trajBodiesPtsPos[i]))
+    // let trajG = new THREE.BufferGeometry().setFromPoints(trajPtsPos);
+    // let trajM = new THREE.LineDashedMaterial( { color: 0x000fff, dashSize: 3, gapSize: 300 } )
+    trajSet = Array.from({length:bodies.length},(x,i)=> new THREE.Line(trajSetG[i], trajMat)   )
+    //let traj = new THREE.Line(trajG, trajM) ;
+    //return trajSet;
+    trajSet.forEach((x,i)=> scene.add(x));
+}
+
+
+function trajForceEng(masses, trajBodiesPtsPosTemp){
+    let siz = masses.length;
+    //console.log(siz)
+    let matPos = Array.from({length:siz},()=>Array.from({length:siz},()=> new THREE.Vector3 ))
+    let matAcc = Array.from({length:siz},()=>Array.from({length:siz},()=> new THREE.Vector3 ))
+    //console.log(matPos)
+    let acc = Array.from({ length: siz }, () => new THREE.Vector3);
+    for(let i=0;i<siz;i++){
+        for(let j=0;j<siz;j++){
+            if(j>=0){
+                matPos[i][j] = trajBodiesPtsPosTemp[j].clone().sub(trajBodiesPtsPosTemp[i]);
+                matAcc[i][j] = forceCalcNew(masses[j],matPos[i][j])
+                //console.log(matAcc[i][j])
+                acc[i].add(matAcc[i][j])
+            }
+        }
+    }
+    //console.log(acc)
+    return acc
+}
+
+function forceCalcNew(mass,r){
+    if(r.length() != 0){
+        let rnorm = r.clone().normalize()
+        let acc = rnorm.multiplyScalar(G*Math.pow(speedToScreen(1),3)*mass/r.distanceToSquared(new THREE.Vector3()) )
+        return acc;
+    } else {
+        return new THREE.Vector3();
+    }
+}
+
+// var aa = [[1,2],[2,3], [3,4]]
+// var bb = Array.from({length:aa.length}, (x,i)=> [aa[i][1]])
+// //for(let x of aa){x.push(2)}
+// console.log(bb)
+
+
+
+/**WORKER SETUP ************************/
+
+if (window.Worker) {
+    var myWorker = new Worker("trajworker.js",{ type: 'module' });
+    //myWorker.postMessage(ttt);
+    // console.log('1 message pushed')
+    // myWorker.postMessage(ttt*2);
+    // console.log('2 massage pushed')
+    // myWorker.onmessage = function(e) {
+    //     console.log('Message received from worker', e.data*2);
+    // }
+    //  console.log('the after');
+
+} else {console.log('no worker')}
+
+/********************************** */
 
 /*************************OBJECT INSTATIATION + SCENE*********************** */
 /******************************************************************************** */
 
 const r1 = new Rocket(-distToScreen(AU),0,0.0000,speedToScreen(/*0.0002113*/ 0.000105   *c) ,1,1.5,1,1 );
 //const r1 = new Rocket(0,0,0.0000,Math.sqrt(9*Math.pow(10,30 ) *1.993* Math.pow(10,(-38))/30 ) ,1,1.5,1,1 );
-const p1 = new Planet(0,0,0,0,2, 50, 1,9*Math.pow(10,30));
-const p2 = new Planet(100,50,0,0,2, 50, 1,9*Math.pow(10,30));
+const p1 = new Planet(0,0,0,speedToScreen(0.00004*c),2, 50, 1,9*Math.pow(10,30));
+const p2 = new Planet(200,50,0,-speedToScreen(0.00004*c),2, 50, 1,9*Math.pow(10,30));
 
 //console.log(r1.forceOnRocket(p1).x * AU/100);
 
@@ -301,6 +379,65 @@ scene.add(line);
 camera.position.z = 100;
 //console.log(r1.trajectory(delT*100))
 
+/* All trajectory related vars and ASYNC CALL *******************************/
+var trajMat = new THREE.LineDashedMaterial( { color: 0x000fff, dashSize: 3, gapSize: 300 } );
+var trajSet = [];
+var posArr = [];
+var VArr = [];
+var posjson=[];
+var vjson=[];
+var masses = Array.from({length:bodies.length}, (x,i)=> bodies[i].mass);
+var isProcessing = false;
+
+//setInterval(intervalTrajectory, 4000, delT);
+setInterval(workerDataSender, 500);
+
+myWorker.onmessage = function(e){
+    drawTraj(e.data)
+}
+
+
+/***************************** */
+
+function workerDataSender(){
+    if (isProcessing === false){
+        //console.log(posjson)
+        myWorker.postMessage([posjson,vjson,masses,delT, G,distanceToScreenMult])
+        isProcessing = true;
+    }
+}
+function drawTraj(trajBodiesPtsPos){
+    isProcessing = false
+    if(trajBodiesPtsPos.length ===0){return}
+    else{
+        //console.log(trajBodiesPtsPos);
+        trajSet.forEach((x,i)=>scene.remove(x))
+        let trajSetG = Array.from({length:posArr.length},(x,i)=> new THREE.BufferGeometry().setFromPoints(trajBodiesPtsPos[i]));
+        trajSet = Array.from({length:bodies.length},(x,i)=> new THREE.Line(trajSetG[i], trajMat)   );
+        trajSet.forEach((x,i)=> scene.add(x));
+    }
+
+    //console.log(data)
+}
+
+
+//        TESTING START??
+// var ttt = 10;
+// if (window.Worker) {
+//     var myWorker = new Worker("trajworker.js");
+//     myWorker.postMessage(ttt);
+//     console.log('1 message pushed')
+//     myWorker.postMessage(ttt*2);
+//     console.log('2 massage pushed')
+//     myWorker.onmessage = function(e) {
+//         console.log('Message received from worker', e.data*2);
+//     }
+//      console.log('the after');
+
+// } else {console.log('no worker')}
+
+        // TESTING END
+
 
 
 /**********************ANIMATE LOOP********************************************** */
@@ -331,40 +468,51 @@ function animate(now) {
         //     r1.moveVel(acc2);
         // }
         r1.movePos(r1.V, delT);
+        p1.moveVel(acc1[1], delT);
+        p2.moveVel(acc1[2], delT);
+        p1.movePos(p1.V, delT);
+        p2.movePos(p2.V, delT);
         dl.position.x = r1.body.position.x
         dl.position.y = r1.body.position.y+3
+        posArr = Array.from({length:bodies.length}, (x,i)=> bodies[i].body.position.toArray())
+        VArr = Array.from({length:bodies.length}, (x,i)=> bodies[i].V.toArray())
+        //posjson = posArr; vjson = VArr;
+         posjson = JSON.parse(JSON.stringify(posArr))
+         vjson = JSON.parse(JSON.stringify(VArr))
 
-        if(acc2.length()>0){
-            if(trajCnt === 0){
-                trajCnt++
-                scene.remove(traj_to_ren_rem);
-            }
-            else if(trajCnt>0){
-                if(trajCnt%modul === 0){
-                    scene.remove(traj_to_ren_rem);   
-                    toggler =0 
-                    //console.log(trajCnt)
-                } else {
-                    if(toggler === 0){
-                        traj_to_ren_rem = r1.trajectory(delT);
-                        scene.add(traj_to_ren_rem);
-                        toggler = 1    
-                        //console.log(trajCnt)                    
-                    }
-                    }
-                trajCnt++;
-            }
-            break;
-        }
-        else {
-            if(trajCnt >0){
-                scene.remove(traj_to_ren_rem);
-                traj_to_ren_rem = r1.trajectory(delT);
-                scene.add(traj_to_ren_rem);
-                trajCnt = 0
-            }
-        }
+
+        // if(acc2.length()>0){
+        //     if(trajCnt === 0){
+        //         trajCnt++
+        //         scene.remove(traj_to_ren_rem);
+        //     }
+        //     else if(trajCnt>0){
+        //         if(trajCnt%modul === 0){
+        //             scene.remove(traj_to_ren_rem);   
+        //             toggler =0 
+        //             //console.log(trajCnt)
+        //         } else {
+        //             if(toggler === 0){
+        //                 traj_to_ren_rem = r1.trajectory(delT);
+        //                 scene.add(traj_to_ren_rem);
+        //                 toggler = 1    
+        //                 //console.log(trajCnt)                    
+        //             }
+        //             }
+        //         trajCnt++;
+        //     }
+        //     break;
+        // }
+        // else {
+        //     if(trajCnt >0){
+        //         scene.remove(traj_to_ren_rem);
+        //         traj_to_ren_rem = r1.trajectory(delT);
+        //         scene.add(traj_to_ren_rem);
+        //         trajCnt = 0
+        //     }
+        // }
     }
+    //console.log(posArr[1])
    stats.end();
 }
 animate();
